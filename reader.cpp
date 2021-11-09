@@ -467,7 +467,13 @@ int main(int argc, char *argv[])
 		.finalize();
     mqtt::topic top(mqtt_cli, TOPIC, QOS, true);
 
-    while (true)
+    try {
+        cout << "Connecting to server '" << DFLT_ADDRESS << "'..." << flush;
+		mqtt_cli.connect(connOpts)->wait();
+		cout << "OK\n" << endl;
+
+
+while (true)
     {
         bool more = true;
         size_t partNum = 0;
@@ -494,7 +500,7 @@ int main(int argc, char *argv[])
                 {
                     ev.Clear();
                     if (ev.ParseFromArray(zmq_msg_data(&zmsg), zmq_msg_size(&zmsg))){
-                        std::cout << ev << std::endl;
+                        //std::cout << ev << std::endl;
                         msg_stream << ev << std::endl;
                     }
                     else
@@ -506,10 +512,23 @@ int main(int argc, char *argv[])
         }
         top.publish(std::move(msg_stream.str()));
     }
+    
     std::cout << "Cleaning..." << std::endl;
     if (zmq_close(sub) != 0)
         perror("zmq_close");
+        
     if (zmq_ctx_destroy(ctx) != 0)
         perror("zmq_close");
+
+    cout << "\nDisconnecting MQTT..." << flush;
+	mqtt_cli.disconnect()->wait();
+	cout << "OK" << endl;
     return 0;
+
+    } catch (const mqtt::exception& exc) {
+		cerr << exc.what() << endl;
+		return 1;
+	}
+
+    
 }
